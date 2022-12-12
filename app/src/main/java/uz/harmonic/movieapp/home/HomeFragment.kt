@@ -1,12 +1,9 @@
 package uz.harmonic.movieapp.home
 
-import android.os.Build
 import android.os.Bundle
 import android.util.Log
-import android.view.KeyEvent
 import android.view.View
 import android.widget.Toast
-import androidx.annotation.RequiresApi
 import androidx.core.os.bundleOf
 import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
@@ -19,10 +16,10 @@ import com.liulishuo.filedownloader.FileDownloadQueueSet
 import com.liulishuo.filedownloader.FileDownloader
 import com.liulishuo.filedownloader.notification.BaseNotificationItem
 import com.liulishuo.filedownloader.notification.FileDownloadNotificationListener
+import timber.log.Timber
 import uz.harmonic.movieapp.MainActivity
 import uz.harmonic.movieapp.R
 import uz.harmonic.movieapp.common.Constants
-import uz.harmonic.movieapp.common.MyKeyEventListener
 import uz.harmonic.movieapp.common.lazyFast
 import uz.harmonic.movieapp.data.DownloadStatus
 import uz.harmonic.movieapp.data.MP4Payloads
@@ -32,10 +29,9 @@ import uz.harmonic.movieapp.home.notification.NotificationItem
 import uz.harmonic.movieapp.home.notification.NotificationUtils
 import uz.harmonic.movieapp.util.NetworkStatus
 
-class HomeFragment : Fragment(R.layout.fragment_home), IOnItemClickListener, View.OnClickListener,
-    MyKeyEventListener {
+class HomeFragment : Fragment(R.layout.fragment_home), IOnItemClickListener, View.OnClickListener {
     private val binding: FragmentHomeBinding by viewBinding()
-    private val mViewModel by viewModels<HomeViewModel>()
+    private val mViewModel: HomeViewModel by viewModels()
     private val list: MutableList<Pojo> = mutableListOf()
     private val fileDownloader by lazy(LazyThreadSafetyMode.NONE) { FileDownloader.getImpl() }
     private val filterDM by lazyFast { requireActivity().cacheDir.absolutePath }
@@ -59,8 +55,9 @@ class HomeFragment : Fragment(R.layout.fragment_home), IOnItemClickListener, Vie
             }
         }
     }
-    private val observerList = Observer<MutableList<Pojo>> {
+    private val observerList = Observer<List<Pojo>> {
         list.clear()
+        Log.d("OnListObserver", ": ${it.joinToString()}")
         list.addAll(it)
     }
 
@@ -74,25 +71,20 @@ class HomeFragment : Fragment(R.layout.fragment_home), IOnItemClickListener, Vie
         )
     }
 
-    private fun getFileNames(): ArrayList<String>? {
-        val finalList: ArrayList<String>? = null
-        val homeFolder = context?.getExternalFilesDir(filterDM)
+    private fun getFileNames(): List<String> {
+        val finalList = mutableListOf<String>()
+        val homeFolder = requireActivity().cacheDir
         val fileList = homeFolder?.listFiles()
+        Timber.tag("TAGTAG").d("getFileNames:" + fileList?.joinToString() + " ")
         if (fileList != null) {
             for (file in fileList) {
-                Log.d("TAGTAG", "getFileNames:$file ")
-                finalList?.add(file.name)
+                finalList.add(file.name)
             }
         } else {
             Toast.makeText(requireActivity(), "$fileList, Ishlamavotti", Toast.LENGTH_SHORT).show()
         }
 
-        finalList.let {
-            return if (it !== null)
-                it
-            else
-                null
-        }
+        return finalList
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
@@ -107,31 +99,24 @@ class HomeFragment : Fragment(R.layout.fragment_home), IOnItemClickListener, Vie
     }
 
     private fun setupViews() {
-        Log.d("TAG", "setupViews: ${getFileNames()}")
+        Timber.tag("TAG").d("setupViews: %s", getFileNames())
         mAdapter = MP4Adapter(list, this, getFileNames())
         binding.rvPojo.adapter = mAdapter
         binding.btnRetry.setOnClickListener(this)
     }
 
     override fun onClickDownload(position: Int, fileName: String, url: String): Int {
-//        listener = NotificationListener(
-//            WeakReference(requireActivity() as MainActivity), Constants.CHANNEL_ID,
-//            mAdapter,
-//            position
-//        )
         val id: Int
         val queueSet = FileDownloadQueueSet(listener(position))
         val task = fileDownloader.create(url)
-        task.path = "$filterDM/$fileName.mp4"
+        task.setPath("$filterDM/$fileName.mp4", false)
         id = task.id
 
         queueSet.downloadTogether(task)
             .addTaskFinishListener {
                 (task.listener as FileDownloadNotificationListener).destroyNotification(task)
-                mAdapter
             }
             .start()
-//        task.start()3
 
         return id
     }
@@ -154,9 +139,7 @@ class HomeFragment : Fragment(R.layout.fragment_home), IOnItemClickListener, Vie
     }
 
     override fun onClickCancel(position: Int, id: Int, fileName: String) {
-        Log.d("TAGTAG", "onClickCancel: $fileName")
         if (fileDownloader.clear(id, fileName)) {
-            Log.d("TAGTAG", "onClickCancel: true")
             mAdapter.setStatus(position, DownloadStatus.CANCEL, MP4Payloads.FILESTATUS)
         }
     }
@@ -169,7 +152,6 @@ class HomeFragment : Fragment(R.layout.fragment_home), IOnItemClickListener, Vie
         return object :
             FileDownloadNotificationListener((requireActivity() as MainActivity).notificationHelper) {
 
-            @RequiresApi(Build.VERSION_CODES.S)
             override fun create(task: BaseDownloadTask?): BaseNotificationItem {
                 return NotificationItem(
                     task!!.id,
@@ -245,10 +227,8 @@ class HomeFragment : Fragment(R.layout.fragment_home), IOnItemClickListener, Vie
         }
     }
 
-    override fun onKeyDown(keyCode: Int, event: KeyEvent?) {
-        Log.d("TAGTAG", "onKeyDown: $event")
-        if (keyCode == KeyEvent.KEYCODE_DPAD_CENTER) {
-            Toast.makeText(context, "$keyCode", Toast.LENGTH_SHORT).show()
-        }
+    fun getDownloadedFileNames() {
+
     }
+
 }

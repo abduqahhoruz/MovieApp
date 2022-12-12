@@ -2,32 +2,31 @@ package uz.harmonic.movieapp
 
 import android.Manifest
 import android.content.pm.PackageManager
-import android.os.Build
 import android.os.Bundle
-import android.view.KeyEvent
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
+import androidx.fragment.app.findFragment
 import androidx.navigation.NavController
+import androidx.navigation.findNavController
 import androidx.navigation.fragment.NavHostFragment
+import by.kirich1409.viewbindingdelegate.viewBinding
+import com.liulishuo.filedownloader.FileDownloader
+import com.liulishuo.filedownloader.notification.FileDownloadNotificationHelper
 import uz.harmonic.movieapp.common.Constants
-import uz.harmonic.movieapp.common.MyKeyEventListener
+import uz.harmonic.movieapp.databinding.ActivityMainBinding
 import uz.harmonic.movieapp.home.notification.NotificationItem
 import uz.harmonic.movieapp.home.notification.NotificationUtils
-import com.liulishuo.filedownloader.FileDownloader
-import com.liulishuo.filedownloader.connection.FileDownloadUrlConnection
-import com.liulishuo.filedownloader.notification.FileDownloadNotificationHelper
 
 
 private const val REQ_CODE_DM = 1001
 
-class MainActivity : AppCompatActivity() {
+class MainActivity : AppCompatActivity(R.layout.activity_main) {
     private lateinit var navController: NavController
     val notificationHelper: FileDownloadNotificationHelper<NotificationItem> =
         FileDownloadNotificationHelper<NotificationItem>()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_main)
         setUpNavigation()
         checkUpPermission()
         FileDownloader.setupOnApplicationOnCreate(application)
@@ -39,41 +38,16 @@ class MainActivity : AppCompatActivity() {
         navController = navHostFragment.navController
     }
 
-    private fun setupFileDownloader() {
-        FileDownloader.setupOnApplicationOnCreate(application)
-            .connectionCreator(
-                FileDownloadUrlConnection.Creator(
-                    FileDownloadUrlConnection.Configuration()
-                        .connectTimeout(15000) // set connection timeout.
-                        .readTimeout(15000) // set read timeout.
-                )
-            )
-            .commit()
-    }
-
-    override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
-        val currentFragment = supportFragmentManager.fragments.first().childFragmentManager.fragments.first()
-        if (currentFragment != null && currentFragment is MyKeyEventListener) {
-            (currentFragment as MyKeyEventListener).onKeyDown(keyCode, event)
-            return true
-        }
-        return super.onKeyDown(keyCode, event)
-    }
-
     private fun checkUpPermission() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            if (ContextCompat.checkSelfPermission(
-                    this,
-                    Manifest.permission.WRITE_EXTERNAL_STORAGE
-                ) != PackageManager.PERMISSION_GRANTED
-            ) {
-                requestPermissions(
-                    arrayOf(Manifest.permission.WRITE_EXTERNAL_STORAGE),
-                    REQ_CODE_DM
-                )
-            }
-        } else {
-            /***/
+        if (ContextCompat.checkSelfPermission(
+                this,
+                Manifest.permission.WRITE_EXTERNAL_STORAGE
+            ) != PackageManager.PERMISSION_GRANTED
+        ) {
+            requestPermissions(
+                arrayOf(Manifest.permission.WRITE_EXTERNAL_STORAGE),
+                REQ_CODE_DM
+            )
         }
     }
 

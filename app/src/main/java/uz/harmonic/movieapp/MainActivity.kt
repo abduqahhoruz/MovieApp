@@ -5,21 +5,19 @@ import android.content.pm.PackageManager
 import android.os.Bundle
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
-import androidx.fragment.app.findFragment
 import androidx.navigation.NavController
-import androidx.navigation.findNavController
 import androidx.navigation.fragment.NavHostFragment
-import by.kirich1409.viewbindingdelegate.viewBinding
 import com.liulishuo.filedownloader.FileDownloader
 import com.liulishuo.filedownloader.notification.FileDownloadNotificationHelper
+import dagger.hilt.android.AndroidEntryPoint
 import uz.harmonic.movieapp.common.Constants
-import uz.harmonic.movieapp.databinding.ActivityMainBinding
 import uz.harmonic.movieapp.home.notification.NotificationItem
 import uz.harmonic.movieapp.home.notification.NotificationUtils
 
 
 private const val REQ_CODE_DM = 1001
 
+@AndroidEntryPoint
 class MainActivity : AppCompatActivity(R.layout.activity_main) {
     private lateinit var navController: NavController
     val notificationHelper: FileDownloadNotificationHelper<NotificationItem> =

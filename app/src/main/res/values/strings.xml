@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">TVApplication</string>
+    <string name="app_name">MovieApp</string>
     <string name="title_home">Home</string>
     <string name="title_dashboard">Dashboard</string>
     <string name="title_notifications">Notifications</string>
@@ -16,4 +16,7 @@
     <string name="delete">Delete</string>
     <string name="notification_sample_show">Show the Notification</string>
     <string name="error_delete_file">File deletion error</string>
+    <string name="video_urlni_kiriting">Video urlni kiriting</string>
+    <string name="url">URL</string>
+    <string name="qo_shish">Qo\'shish</string>
 </resources>

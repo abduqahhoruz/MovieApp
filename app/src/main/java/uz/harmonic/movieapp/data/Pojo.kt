@@ -1,12 +1,9 @@
 package uz.harmonic.movieapp.data
 
 data class Pojo(
-    val description: String,
-    val sources: List<String>,
-    val subtitle: String,
-    val thumb: String,
-    val title: String,
     var id: Int = -1,
+    var url: String = "",
+    val title: String = "",
     var fileName: String = "",
     var soFarBytes: Int = 0,
     var totalBytes: Int = 0,
@@ -15,13 +12,13 @@ data class Pojo(
 
 )
 
-enum class DownloadStatus {
-    PAUSED,
-    SUCCESS,
-    ERROR,
-    EMPTY,
-    CONNECTED,
-    CANCEL
+enum class DownloadStatus(val value: Int) {
+    PAUSED(2),
+    SUCCESS(1),
+    ERROR(-1),
+    EMPTY(0),
+    CONNECTED(3),
+    CANCEL(-2)
 }
 
 sealed class MP4Payloads {

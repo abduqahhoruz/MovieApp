@@ -16,7 +16,7 @@ import com.liulishuo.filedownloader.FileDownloadQueueSet
 import com.liulishuo.filedownloader.FileDownloader
 import com.liulishuo.filedownloader.notification.BaseNotificationItem
 import com.liulishuo.filedownloader.notification.FileDownloadNotificationListener
-import timber.log.Timber
+import dagger.hilt.android.AndroidEntryPoint
 import uz.harmonic.movieapp.MainActivity
 import uz.harmonic.movieapp.R
 import uz.harmonic.movieapp.common.Constants
@@ -24,18 +24,33 @@ import uz.harmonic.movieapp.common.lazyFast
 import uz.harmonic.movieapp.data.DownloadStatus
 import uz.harmonic.movieapp.data.MP4Payloads
 import uz.harmonic.movieapp.data.Pojo
+import uz.harmonic.movieapp.databinding.AddDialogLayoutBinding
 import uz.harmonic.movieapp.databinding.FragmentHomeBinding
 import uz.harmonic.movieapp.home.notification.NotificationItem
 import uz.harmonic.movieapp.home.notification.NotificationUtils
 import uz.harmonic.movieapp.util.NetworkStatus
 
+@AndroidEntryPoint
 class HomeFragment : Fragment(R.layout.fragment_home), IOnItemClickListener, View.OnClickListener {
     private val binding: FragmentHomeBinding by viewBinding()
+    private var _alertDialogBinding: AddDialogLayoutBinding? = null
+    private val alertDialogBinding get() = _alertDialogBinding!!
     private val mViewModel: HomeViewModel by viewModels()
     private val list: MutableList<Pojo> = mutableListOf()
+    private lateinit var pojo: Pojo
     private val fileDownloader by lazy(LazyThreadSafetyMode.NONE) { FileDownloader.getImpl() }
     private val filterDM by lazyFast { requireActivity().cacheDir.absolutePath }
     private lateinit var mAdapter: MP4Adapter
+    private val observerError = Observer<String> {
+        if (it == "") {
+            _alertDialogBinding = null
+            alertDialog?.hide()
+        } else {
+            Toast.makeText(requireContext(), it, Toast.LENGTH_SHORT).show()
+            alertDialog?.hide()
+        }
+
+    }
     private val observerLoadPojoStatus = Observer<NetworkStatus> {
         when (it) {
             is NetworkStatus.LOADING -> {
@@ -44,6 +59,12 @@ class HomeFragment : Fragment(R.layout.fragment_home), IOnItemClickListener, Vie
                 binding.llcError.isVisible = false
             }
             is NetworkStatus.ERROR -> {
+                Toast.makeText(
+                    requireContext(),
+                    requireContext().getString(it.res),
+                    Toast.LENGTH_SHORT
+                )
+                    .show()
                 binding.pbLoading.isVisible = false
                 binding.rvPojo.isVisible = false
                 binding.llcError.isVisible = true
@@ -59,11 +80,11 @@ class HomeFragment : Fragment(R.layout.fragment_home), IOnItemClickListener, Vie
         list.clear()
         Log.d("OnListObserver", ": ${it.joinToString()}")
         list.addAll(it)
+        mAdapter.submitList(it)
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        mViewModel.loadPojoList()
         NotificationUtils.createNotificationChannel(
             Constants.CHANNEL_ID,
             "MyFileDownloader",
@@ -71,21 +92,6 @@ class HomeFragment : Fragment(R.layout.fragment_home), IOnItemClickListener, Vie
         )
     }
 
-    private fun getFileNames(): List<String> {
-        val finalList = mutableListOf<String>()
-        val homeFolder = requireActivity().cacheDir
-        val fileList = homeFolder?.listFiles()
-        Timber.tag("TAGTAG").d("getFileNames:" + fileList?.joinToString() + " ")
-        if (fileList != null) {
-            for (file in fileList) {
-                finalList.add(file.name)
-            }
-        } else {
-            Toast.makeText(requireActivity(), "$fileList, Ishlamavotti", Toast.LENGTH_SHORT).show()
-        }
-
-        return finalList
-    }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
@@ -94,23 +100,28 @@ class HomeFragment : Fragment(R.layout.fragment_home), IOnItemClickListener, Vie
     }
 
     private fun setupObserver() {
+        mViewModel.liveError.observe(viewLifecycleOwner, observerError)
         mViewModel.liveLoadPojoStatus.observe(viewLifecycleOwner, observerLoadPojoStatus)
         mViewModel.livePojoList.observe(viewLifecycleOwner, observerList)
     }
 
     private fun setupViews() {
-        Timber.tag("TAG").d("setupViews: %s", getFileNames())
-        mAdapter = MP4Adapter(list, this, getFileNames())
+        mAdapter = MP4Adapter(list, this, listOf())
         binding.rvPojo.adapter = mAdapter
         binding.btnRetry.setOnClickListener(this)
+        binding.fabAdd.setOnClickListener {
+            alertDialog?.show()
+            alertDialogBinding.actionStartDownload.setOnClickListener {
+                mViewModel.addUrl(alertDialogBinding.inputUrl.text.toString())
+            }
+        }
     }
 
-    override fun onClickDownload(position: Int, fileName: String, url: String): Int {
-        val id: Int
-        val queueSet = FileDownloadQueueSet(listener(position))
-        val task = fileDownloader.create(url)
-        task.setPath("$filterDM/$fileName.mp4", false)
-        id = task.id
+    override fun onClickDownload(adapterPosition: Int, pojo: Pojo) {
+        this.pojo = pojo
+        val queueSet = FileDownloadQueueSet(listener(adapterPosition))
+        val task = fileDownloader.create(pojo.url)
+        task.setPath("$filterDM/${pojo.fileName}.mp4", false)
 
         queueSet.downloadTogether(task)
             .addTaskFinishListener {
@@ -118,34 +129,34 @@ class HomeFragment : Fragment(R.layout.fragment_home), IOnItemClickListener, Vie
             }
             .start()
 
-        return id
     }
 
-    override fun onClickInfo(position: Int, fileName: String, title: String, description: String) {
+    override fun onClickInfo(position: Int, fileName: String, title: String, url: String) {
         val args = bundleOf(
             Pair("key_title", title),
             Pair("key_fileName", fileName),
-            Pair("key_description", description)
+            Pair("key_description", url)
         )
         findNavController().navigate(R.id.navigation_home_info, args)
     }
 
-    override fun onClickPlay(position: Int, fileName: String, url: String) {
-        onClickDownload(position, fileName, url)
+    override fun onClickPlay(position: Int, pojo: Pojo) {
+        onClickDownload(position, pojo)
     }
 
     override fun onClickPause(id: Int) {
         fileDownloader.pause(id)
     }
 
-    override fun onClickCancel(position: Int, id: Int, fileName: String) {
+    override fun onClickCancel(pos: Int, id: Int, fileName: String) {
         if (fileDownloader.clear(id, fileName)) {
-            mAdapter.setStatus(position, DownloadStatus.CANCEL, MP4Payloads.FILESTATUS)
+            mAdapter.setStatus(pos, DownloadStatus.CANCEL, MP4Payloads.FILESTATUS)
+            mViewModel.deleteVideo(list[pos].id)
         }
     }
 
     private fun onRetry() {
-        mViewModel.loadPojoList()
+
     }
 
     private fun listener(position: Int): FileDownloadNotificationListener {
@@ -177,6 +188,8 @@ class HomeFragment : Fragment(R.layout.fragment_home), IOnItemClickListener, Vie
             ) {
                 super.connected(task, etag, isContinue, soFarBytes, totalBytes)
                 mAdapter.setStatus(position, DownloadStatus.CONNECTED, MP4Payloads.FILESTATUS)
+                mViewModel.updateVideoStatus(DownloadStatus.CONNECTED, list[position].id)
+
             }
 
             override fun progress(
@@ -185,7 +198,10 @@ class HomeFragment : Fragment(R.layout.fragment_home), IOnItemClickListener, Vie
                 totalBytes: Int
             ) {
                 super.progress(task, soFarBytes, totalBytes)
+                //change status by viewModel
+                //change downloaded bytes by viewModel
                 mAdapter.setStatus(position, soFarBytes, totalBytes, MP4Payloads.FILEDOWNLOADING)
+                mViewModel.updateBytes(0, soFarBytes, totalBytes)
             }
 
             override fun completed(task: BaseDownloadTask?) {
@@ -195,6 +211,12 @@ class HomeFragment : Fragment(R.layout.fragment_home), IOnItemClickListener, Vie
                     task?.largeFileSoFarBytes?.toInt() ?: 0,
                     task?.largeFileTotalBytes?.toInt() ?: 0,
                     MP4Payloads.FILESTATUS
+                )
+                mViewModel.updateVideoStatus(DownloadStatus.SUCCESS, pojo.id)
+                mViewModel.updateBytes(
+                    list[position].id,
+                    soFarBytes = task?.largeFileSoFarBytes?.toInt() ?: 0,
+                    task?.largeFileTotalBytes?.toInt() ?: 0
                 )
                 mAdapter.setStatus(position, DownloadStatus.SUCCESS, MP4Payloads.FILESTATUS)
 
@@ -206,11 +228,13 @@ class HomeFragment : Fragment(R.layout.fragment_home), IOnItemClickListener, Vie
                 totalBytes: Int
             ) {
                 super.paused(task, soFarBytes, totalBytes)
-                mAdapter.setStatus(position, DownloadStatus.PAUSED, MP4Payloads.FILESTATUS)
+                mViewModel.updateVideoStatus(DownloadStatus.PAUSED, list[position].id)
+
             }
 
             override fun error(task: BaseDownloadTask?, e: Throwable?) {
                 super.error(task, e)
+                mViewModel.updateVideoStatus(DownloadStatus.ERROR, list[position].id)
                 mAdapter.setStatus(position, DownloadStatus.ERROR, MP4Payloads.FILESTATUS)
             }
 
@@ -227,8 +251,15 @@ class HomeFragment : Fragment(R.layout.fragment_home), IOnItemClickListener, Vie
         }
     }
 
-    fun getDownloadedFileNames() {
-
+    private val alertDialog by lazy {
+        _alertDialogBinding = AddDialogLayoutBinding.inflate(layoutInflater)
+        context?.let {
+            androidx.appcompat.app.AlertDialog.Builder(it)
+                .setView(alertDialogBinding.root)
+                .setCancelable(false)
+                .create()
+        }
     }
+
 
 }

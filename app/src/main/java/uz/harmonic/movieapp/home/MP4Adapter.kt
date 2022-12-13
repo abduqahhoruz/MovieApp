@@ -7,18 +7,14 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.core.view.isInvisible
 import androidx.core.view.isVisible
+import androidx.recyclerview.widget.DiffUtil
+import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
-import com.bumptech.glide.Glide
 import timber.log.Timber
-import uz.harmonic.movieapp.MyApp
 import uz.harmonic.movieapp.R
-import uz.harmonic.movieapp.common.Constants
 import uz.harmonic.movieapp.data.DownloadStatus
 import uz.harmonic.movieapp.data.MP4Payloads
 import uz.harmonic.movieapp.data.Pojo
-import uz.harmonic.movieapp.data.prefs.PrefHelper
-import uz.harmonic.movieapp.data.prefs.Prefs
-
 import uz.harmonic.movieapp.databinding.ItemRowMp4Binding
 import java.math.BigDecimal
 
@@ -26,7 +22,7 @@ class MP4Adapter(
     private val mDatalist: MutableList<Pojo>,
     private val onClickListener: IOnItemClickListener,
     private val fileNames: List<String>
-) : RecyclerView.Adapter<MP4Adapter.MP4VH>() {
+) : ListAdapter<Pojo, MP4Adapter.MP4VH>(ItemMp4Difference()) {
 
     class MP4VH(
         private val binding: ItemRowMp4Binding,
@@ -39,13 +35,9 @@ class MP4Adapter(
         fun onBind(pojo: Pojo) {
             with(binding) {
                 Timber.tag("WTFTAG").d("POJO: " + pojo + "  filenames: " + fileNames)
-                Glide.with(root.context)
-                    .load("${Constants.BASE_URL}${pojo.thumb}")
-                    .placeholder(R.drawable.ic_video_placeholder)
-                    .into(ivMp4)
                 ivDownload.isVisible = !checkWhetherDownloaded(pojo)
                 tvTitle.text = pojo.title
-                tvDescription.text = pojo.description
+                tvDescription.text = pojo.url
                 ivDownload.setOnClickListener(this@MP4VH)
                 btnPause.setOnClickListener(this@MP4VH)
                 btnCancel.setOnClickListener(this@MP4VH)
@@ -142,7 +134,6 @@ class MP4Adapter(
                     }
                     DownloadStatus.PAUSED -> {
                         Log.d("TAGTAG", "onFileStatus: PAUSED")
-                        mDatalist[bindingAdapterPosition].paused = true
                         llDownload.isVisible = mDatalist[bindingAdapterPosition].soFarBytes > 0
                         ivDownload.isVisible = false
                         ivDownload.isClickable = false
@@ -177,17 +168,11 @@ class MP4Adapter(
                     ivDownload.id -> {
                         ivDownload.visibility = View.GONE
                         val pojo = mDatalist[bindingAdapterPosition]
-                        val fileName = mDatalist[bindingAdapterPosition].title.replace(" ", "")
                         llDownload.isVisible = true
                         btnPause.setImageResource(R.drawable.ic_pause_circle)
-                        val id =
-                            onClickListener.onClickDownload(
-                                bindingAdapterPosition,
-                                fileName,
-                                pojo.sources[0]
-                            )
-                        pojo.fileName = fileName
-                        pojo.id = id
+                        onClickListener.onClickDownload(bindingAdapterPosition, pojo)
+
+
                     }
                     btnPause.id -> {
                         val pojo = mDatalist[bindingAdapterPosition]
@@ -197,8 +182,7 @@ class MP4Adapter(
                             btnPause.setImageResource(R.drawable.ic_pause_circle)
                             onClickListener.onClickPlay(
                                 bindingAdapterPosition,
-                                pojo.fileName,
-                                pojo.sources[0]
+                                pojo
                             )
                         } else {
                             //downloading -> pause
@@ -222,11 +206,12 @@ class MP4Adapter(
                             bindingAdapterPosition,
                             pojo.fileName,
                             pojo.title,
-                            pojo.description
+                            pojo.url
                         )
 
                     }
 
+                    else -> {}
                 }
             }
         }
@@ -271,15 +256,32 @@ class MP4Adapter(
         }
     }
 
-    override fun getItemCount() = mDatalist.size
-
 
 }
 
+class ItemMp4Difference : DiffUtil.ItemCallback<Pojo>() {
+    override fun areItemsTheSame(
+        oldItem: Pojo,
+        newItem: Pojo
+    ): Boolean {
+        return oldItem == newItem
+    }
+
+    override fun areContentsTheSame(
+        oldItem: Pojo,
+        newItem: Pojo
+    ): Boolean {
+        return oldItem.id == newItem.id
+
+    }
+
+}
+
+
 interface IOnItemClickListener {
-    fun onClickInfo(position: Int, fileName: String, title: String, description: String)
-    fun onClickDownload(position: Int, fileName: String, url: String): Int
-    fun onClickPlay(position: Int, fileName: String, url: String)
+    fun onClickInfo(position: Int, fileName: String, title: String, url: String)
+    fun onClickDownload(adapterPosition: Int, pojo: Pojo)
+    fun onClickPlay(position: Int, pojo: Pojo)
     fun onClickPause(id: Int)
     fun onClickCancel(pos: Int, id: Int, fileName: String)
 }

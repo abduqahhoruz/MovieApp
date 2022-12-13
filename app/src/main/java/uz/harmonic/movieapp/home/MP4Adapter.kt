@@ -1,54 +1,60 @@
 package uz.harmonic.movieapp.home
 
+import android.annotation.SuppressLint
 import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.core.view.isInvisible
 import androidx.core.view.isVisible
+import androidx.recyclerview.widget.DiffUtil
+import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
-import com.bumptech.glide.Glide
+import timber.log.Timber
 import uz.harmonic.movieapp.R
-import uz.harmonic.movieapp.common.Constants
 import uz.harmonic.movieapp.data.DownloadStatus
 import uz.harmonic.movieapp.data.MP4Payloads
 import uz.harmonic.movieapp.data.Pojo
-
 import uz.harmonic.movieapp.databinding.ItemRowMp4Binding
 import java.math.BigDecimal
 
 class MP4Adapter(
     private val mDatalist: MutableList<Pojo>,
     private val onClickListener: IOnItemClickListener,
-    private val fileNames: ArrayList<String>?
-) : RecyclerView.Adapter<MP4Adapter.MP4VH>() {
+    private val fileNames: List<String>
+) : ListAdapter<Pojo, MP4Adapter.MP4VH>(ItemMp4Difference()) {
 
-    inner class MP4VH(
+    class MP4VH(
         private val binding: ItemRowMp4Binding,
-        private val onClickListener: IOnItemClickListener
+        private val onClickListener: IOnItemClickListener,
+        private val fileNames: List<String>,
+        private val mDatalist: MutableList<Pojo>
     ) : RecyclerView.ViewHolder(binding.root), View.OnClickListener {
         private var statusText: String = "status"
 
         fun onBind(pojo: Pojo) {
-            binding.ivDownload.isVisible = !checkWhetherDownloaded(pojo)
-            binding.tvTitle.text = pojo.title
-            binding.tvDescription.text = pojo.description
-            Glide.with(binding.root.context)
-                .load("${Constants.BASE_URL}${pojo.thumb}")
-                .placeholder(R.drawable.ic_video_placeholder)
-                .into(binding.ivMp4)
-            binding.ivDownload.setOnClickListener(this)
-            binding.btnPause.setOnClickListener(this)
-            binding.btnCancel.setOnClickListener(this)
-            onFileStatus(pojo)
+            with(binding) {
+                Timber.tag("WTFTAG").d("POJO: " + pojo + "  filenames: " + fileNames)
+                ivDownload.isVisible = !checkWhetherDownloaded(pojo)
+                tvTitle.text = pojo.title
+                tvDescription.text = pojo.url
+                ivDownload.setOnClickListener(this@MP4VH)
+                btnPause.setOnClickListener(this@MP4VH)
+                btnCancel.setOnClickListener(this@MP4VH)
+                onFileStatus(pojo)
+            }
+
         }
 
+        @SuppressLint("TimberArgCount")
         private fun checkWhetherDownloaded(pojo: Pojo): Boolean {
             var boolean = false
-            if (fileNames != null) {
+            if (fileNames.isNotEmpty()) {
                 for (i in fileNames) {
                     if (i == pojo.fileName) {
                         boolean = true
+                        Timber.tag("checkWhetherDownloaded")
+                            .d("%s%s", "%s and ", "i: " + i, pojo.fileName)
                     }
                 }
 
@@ -57,37 +63,41 @@ class MP4Adapter(
         }
 
         fun onFileDownloading(pojo: Pojo) {
-            if (pojo.totalBytes != 0) {
-                val progressPercent = pojo.soFarBytes.toFloat() * 100 / pojo.totalBytes.toFloat()
-                if (progressPercent > 0) {
-                    binding.pbDownloading.isIndeterminate = false
-                    binding.pbDownloading.progress = progressPercent.toInt()
-                }
-                var soFarBytes = pojo.soFarBytes.toFloat()
-                var totalBytes = pojo.totalBytes.toFloat()
-                var sofarText = "B"
-                var totalText = "B"
-                if (soFarBytes > 1_024 * 1_024) {
-                    soFarBytes /= (1_024 * 1_024)
-                    sofarText = "MB"
-                } else if (soFarBytes > 1_024) {
-                    soFarBytes /= 1_024
-                    sofarText = "KB"
-                }
+            with(binding) {
+                if (pojo.totalBytes != 0) {
+                    val progressPercent =
+                        pojo.soFarBytes.toFloat() * 100 / pojo.totalBytes.toFloat()
+                    if (progressPercent > 0) {
+                        pbDownloading.isIndeterminate = false
+                        pbDownloading.progress = progressPercent.toInt()
+                    }
+                    var soFarBytes = pojo.soFarBytes.toFloat()
+                    var totalBytes = pojo.totalBytes.toFloat()
+                    var sofarText = "B"
+                    var totalText = "B"
+                    if (soFarBytes > 1_024 * 1_024) {
+                        soFarBytes /= (1_024 * 1_024)
+                        sofarText = "MB"
+                    } else if (soFarBytes > 1_024) {
+                        soFarBytes /= 1_024
+                        sofarText = "KB"
+                    }
 
-                if (totalBytes > 1_024 * 1_024) {
-                    totalBytes /= (1_024 * 1_024)
-                    totalText = "MB"
-                } else if (totalBytes > 1_024) {
-                    totalBytes /= 1_024
-                    totalText = "KB"
-                }
+                    if (totalBytes > 1_024 * 1_024) {
+                        totalBytes /= (1_024 * 1_024)
+                        totalText = "MB"
+                    } else if (totalBytes > 1_024) {
+                        totalBytes /= 1_024
+                        totalText = "KB"
+                    }
 
-                soFarBytes = round(soFarBytes, 1)
-                totalBytes = round(totalBytes, 1)
-                binding.tvProgress.text =
-                    "$statusText: ${progressPercent.toInt()}%  ${soFarBytes} $sofarText/$totalBytes $totalText"
+                    soFarBytes = round(soFarBytes, 1)
+                    totalBytes = round(totalBytes, 1)
+                    tvProgress.text =
+                        "$statusText: ${progressPercent.toInt()}%  ${soFarBytes} $sofarText/$totalBytes $totalText"
+                }
             }
+
         }
 
         fun onFileStatus(pojo: Pojo) {
@@ -124,7 +134,6 @@ class MP4Adapter(
                     }
                     DownloadStatus.PAUSED -> {
                         Log.d("TAGTAG", "onFileStatus: PAUSED")
-                        mDatalist[bindingAdapterPosition].paused = true
                         llDownload.isVisible = mDatalist[bindingAdapterPosition].soFarBytes > 0
                         ivDownload.isVisible = false
                         ivDownload.isClickable = false
@@ -140,6 +149,7 @@ class MP4Adapter(
                     }
                 }
 
+
             }
 
             onFileDownloading(pojo)
@@ -153,58 +163,55 @@ class MP4Adapter(
         }
 
         override fun onClick(v: View) {
-            when (v.id) {
-                binding.ivDownload.id -> {
-                    binding.ivDownload.visibility = View.GONE
-                    val pojo = mDatalist[bindingAdapterPosition]
-                    val fileName = mDatalist[bindingAdapterPosition].title.replace(" ", "")
-                    binding.llDownload.isVisible = true
-                    binding.btnPause.setImageResource(R.drawable.ic_pause_circle)
-                    val id =
-                        onClickListener.onClickDownload(
+            with(binding) {
+                when (v.id) {
+                    ivDownload.id -> {
+                        ivDownload.visibility = View.GONE
+                        val pojo = mDatalist[bindingAdapterPosition]
+                        llDownload.isVisible = true
+                        btnPause.setImageResource(R.drawable.ic_pause_circle)
+                        onClickListener.onClickDownload(bindingAdapterPosition, pojo)
+
+
+                    }
+                    btnPause.id -> {
+                        val pojo = mDatalist[bindingAdapterPosition]
+                        if (pojo.paused) {
+                            //pause -> downloading
+                            pojo.paused = false
+                            btnPause.setImageResource(R.drawable.ic_pause_circle)
+                            onClickListener.onClickPlay(
+                                bindingAdapterPosition,
+                                pojo
+                            )
+                        } else {
+                            //downloading -> pause
+                            pojo.paused = true
+                            btnPause.setImageResource(R.drawable.ic_play_circle)
+                            onClickListener.onClickPause(pojo.id)
+                        }
+                    }
+                    btnCancel.id -> {
+                        val pojo = mDatalist[bindingAdapterPosition]
+                        pojo.soFarBytes = 0
+                        onClickListener.onClickCancel(
                             bindingAdapterPosition,
-                            fileName,
-                            pojo.sources[0]
+                            pojo.id,
+                            pojo.fileName
                         )
-                    pojo.fileName = fileName
-                    pojo.id = id
-                }
-                binding.btnPause.id -> {
-                    val pojo = mDatalist[bindingAdapterPosition]
-                    if (pojo.paused) {
-                        //pause -> downloading
-                        pojo.paused = false
-                        binding.btnPause.setImageResource(R.drawable.ic_pause_circle)
-                        onClickListener.onClickPlay(
+                    }
+                    llcItemRow.id -> {
+                        val pojo = mDatalist[bindingAdapterPosition]
+                        onClickListener.onClickInfo(
                             bindingAdapterPosition,
                             pojo.fileName,
-                            pojo.sources[0]
+                            pojo.title,
+                            pojo.url
                         )
-                    } else {
-                        //downloading -> pause
-                        pojo.paused = true
-                        binding.btnPause.setImageResource(R.drawable.ic_play_circle)
-                        onClickListener.onClickPause(pojo.id)
+
                     }
-                }
-                binding.btnCancel.id -> {
-//                    mDatalist[bindingAdapterPosition].paused = false
-                    val pojo = mDatalist[bindingAdapterPosition]
-                    pojo.soFarBytes = 0
-                    onClickListener.onClickCancel(bindingAdapterPosition, pojo.id, pojo.fileName)
-                    /*  binding.pbDownloading.isIndeterminate = true
-                      binding.ivDownload.isVisible = true
-                      binding.ivDownload.isClickable = true
-                      binding.llDownload.isVisible = false*/
-                }
-                binding.llcItemRow.id -> {
-                    val pojo = mDatalist[bindingAdapterPosition]
-                    onClickListener.onClickInfo(
-                        bindingAdapterPosition,
-                        pojo.fileName,
-                        pojo.title,
-                        pojo.description
-                    )
+
+                    else -> {}
                 }
             }
         }
@@ -223,7 +230,7 @@ class MP4Adapter(
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): MP4VH {
         val binding = ItemRowMp4Binding.inflate(LayoutInflater.from(parent.context), parent, false)
-        return MP4VH(binding, onClickListener)
+        return MP4VH(binding, onClickListener, fileNames, mDatalist)
     }
 
     override fun onBindViewHolder(holder: MP4VH, position: Int) {
@@ -249,15 +256,32 @@ class MP4Adapter(
         }
     }
 
-    override fun getItemCount() = mDatalist.size
-
 
 }
 
+class ItemMp4Difference : DiffUtil.ItemCallback<Pojo>() {
+    override fun areItemsTheSame(
+        oldItem: Pojo,
+        newItem: Pojo
+    ): Boolean {
+        return oldItem == newItem
+    }
+
+    override fun areContentsTheSame(
+        oldItem: Pojo,
+        newItem: Pojo
+    ): Boolean {
+        return oldItem.id == newItem.id
+
+    }
+
+}
+
+
 interface IOnItemClickListener {
-    fun onClickInfo(position: Int, fileName: String, title: String, description: String)
-    fun onClickDownload(position: Int, fileName: String, url: String): Int
-    fun onClickPlay(position: Int, fileName: String, url: String)
+    fun onClickInfo(position: Int, fileName: String, title: String, url: String)
+    fun onClickDownload(adapterPosition: Int, pojo: Pojo)
+    fun onClickPlay(position: Int, pojo: Pojo)
     fun onClickPause(id: Int)
     fun onClickCancel(pos: Int, id: Int, fileName: String)
 }

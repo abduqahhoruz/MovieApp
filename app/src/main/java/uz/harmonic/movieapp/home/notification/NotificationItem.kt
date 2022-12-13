@@ -12,11 +12,11 @@ import uz.harmonic.movieapp.MyApp
 import com.liulishuo.filedownloader.model.FileDownloadStatus
 import com.liulishuo.filedownloader.notification.BaseNotificationItem
 import com.liulishuo.filedownloader.util.FileDownloadHelper
+import uz.harmonic.movieapp.MyApp.Companion.appContext
 import uz.harmonic.movieapp.R
 
 const val REQ_CODE_PEN_INTENT = 0
 
-@RequiresApi(Build.VERSION_CODES.S)
 class NotificationItem(id: Int, title: String, desc: String, channelId: String) :
     BaseNotificationItem(id, title, desc) {
     private var builder: NotificationCompat.Builder? = null
@@ -24,9 +24,9 @@ class NotificationItem(id: Int, title: String, desc: String, channelId: String) 
     init {
         val intents = arrayOfNulls<Intent>(1)
         intents[0] =
-            Intent.makeMainActivity(ComponentName(MyApp.CONTEXT!!, MainActivity::class.java))
+            Intent.makeMainActivity(ComponentName(appContext, MainActivity::class.java))
         val pendingIntent = PendingIntent.getActivities(
-            MyApp.CONTEXT!!,
+            appContext,
             REQ_CODE_PEN_INTENT,
             intents,
             PendingIntent.FLAG_MUTABLE

@@ -3,15 +3,21 @@ package uz.harmonic.movieapp
 import android.app.Application
 import android.content.Context
 import com.liulishuo.filedownloader.FileDownloader
+import dagger.hilt.android.HiltAndroidApp
+import timber.log.Timber
 
-class MyApp :Application(){
-    companion object{
-        var CONTEXT: Context? = null
+@HiltAndroidApp
+class MyApp : Application() {
+    companion object {
+        lateinit var appContext: Context
     }
+
     override fun onCreate() {
-        // for demo.
-       CONTEXT = this.applicationContext
+        appContext = this
         FileDownloader.setupOnApplicationOnCreate(this)
+        if (BuildConfig.DEBUG) {
+            Timber.plant(Timber.DebugTree())
+        }
         super.onCreate()
     }
 }

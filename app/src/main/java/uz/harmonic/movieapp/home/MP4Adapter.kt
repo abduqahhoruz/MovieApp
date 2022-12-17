@@ -1,16 +1,12 @@
 package uz.harmonic.movieapp.home
 
-import android.annotation.SuppressLint
-import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import androidx.core.view.isInvisible
 import androidx.core.view.isVisible
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
-import timber.log.Timber
 import uz.harmonic.movieapp.R
 import uz.harmonic.movieapp.data.DownloadStatus
 import uz.harmonic.movieapp.data.MP4Payloads
@@ -26,40 +22,23 @@ class MP4Adapter(
 
     class MP4VH(
         private val binding: ItemRowMp4Binding,
-        private val onClickListener: IOnItemClickListener,
-        private val fileNames: List<String>,
-        private val mDatalist: MutableList<Pojo>
+        private val onClickListener: IOnItemClickListener
     ) : RecyclerView.ViewHolder(binding.root), View.OnClickListener {
         private var statusText: String = "status"
+        lateinit var pojo: Pojo
 
         fun onBind(pojo: Pojo) {
+            this.pojo = pojo
             with(binding) {
-                Timber.tag("WTFTAG").d("POJO: " + pojo + "  filenames: " + fileNames)
-                ivDownload.isVisible = !checkWhetherDownloaded(pojo)
                 tvTitle.text = pojo.title
                 tvDescription.text = pojo.url
                 ivDownload.setOnClickListener(this@MP4VH)
                 btnPause.setOnClickListener(this@MP4VH)
                 btnCancel.setOnClickListener(this@MP4VH)
+                ivDelete.setOnClickListener(this@MP4VH)
                 onFileStatus(pojo)
             }
 
-        }
-
-        @SuppressLint("TimberArgCount")
-        private fun checkWhetherDownloaded(pojo: Pojo): Boolean {
-            var boolean = false
-            if (fileNames.isNotEmpty()) {
-                for (i in fileNames) {
-                    if (i == pojo.fileName) {
-                        boolean = true
-                        Timber.tag("checkWhetherDownloaded")
-                            .d("%s%s", "%s and ", "i: " + i, pojo.fileName)
-                    }
-                }
-
-            }
-            return boolean
         }
 
         fun onFileDownloading(pojo: Pojo) {
@@ -102,7 +81,6 @@ class MP4Adapter(
 
         fun onFileStatus(pojo: Pojo) {
             with(binding) {
-                Log.d("status", "onFileStatus: ${pojo.title} ${pojo.status}")
                 when (pojo.status) {
                     DownloadStatus.EMPTY -> {
                         llDownload.isVisible = false
@@ -111,19 +89,17 @@ class MP4Adapter(
                         statusText = ""
                     }
                     DownloadStatus.CONNECTED -> {
-                        mDatalist[bindingAdapterPosition].paused = false
+                        btnPause.setImageResource(R.drawable.ic_pause_circle)
                         llDownload.isVisible = true
                         ivDownload.isVisible = false
                         ivDownload.isClickable = false
-                        btnPause.isInvisible = false
                         statusText = "Downloading"
                     }
                     DownloadStatus.SUCCESS -> {
                         llDownload.isVisible = false
-                        ivDownload.isVisible = false
-                        ivDownload.isClickable = false
-                        btnPause.isInvisible = true
-                        llcItemRow.setOnClickListener(this@MP4VH)
+                        ivDownload.setImageResource(R.drawable.ic_play_circle)
+                        ivDownload.isVisible = true
+                        ivDownload.isClickable = true
                         statusText = "Download completed"
                     }
                     DownloadStatus.ERROR -> {
@@ -132,28 +108,20 @@ class MP4Adapter(
                         ivDownload.isClickable = true
                         statusText = "Error downloading"
                     }
-                    DownloadStatus.PAUSED -> {
-                        Log.d("TAGTAG", "onFileStatus: PAUSED")
-                        llDownload.isVisible = mDatalist[bindingAdapterPosition].soFarBytes > 0
-                        ivDownload.isVisible = false
-                        ivDownload.isClickable = false
-                        statusText = "Downloading paused"
-                    }
+
                     DownloadStatus.CANCEL -> {
-                        Log.d("TAGTAG", "onFileStatus: CANCEL")
                         pojo.soFarBytes = 0
                         binding.pbDownloading.isIndeterminate = true
                         binding.ivDownload.isVisible = true
                         binding.ivDownload.isClickable = true
                         binding.llDownload.isVisible = false
                     }
+                    else -> {}
                 }
 
 
             }
-
             onFileDownloading(pojo)
-
         }
 
         private fun round(d: Float, decimalPlace: Int): Float {
@@ -166,71 +134,28 @@ class MP4Adapter(
             with(binding) {
                 when (v.id) {
                     ivDownload.id -> {
-                        ivDownload.visibility = View.GONE
-                        val pojo = mDatalist[bindingAdapterPosition]
-                        llDownload.isVisible = true
-                        btnPause.setImageResource(R.drawable.ic_pause_circle)
-                        onClickListener.onClickDownload(bindingAdapterPosition, pojo)
-
-
-                    }
-                    btnPause.id -> {
-                        val pojo = mDatalist[bindingAdapterPosition]
-                        if (pojo.paused) {
-                            //pause -> downloading
-                            pojo.paused = false
-                            btnPause.setImageResource(R.drawable.ic_pause_circle)
-                            onClickListener.onClickPlay(
-                                bindingAdapterPosition,
-                                pojo
-                            )
-                        } else {
-                            //downloading -> pause
-                            pojo.paused = true
-                            btnPause.setImageResource(R.drawable.ic_play_circle)
-                            onClickListener.onClickPause(pojo.id)
-                        }
+                        onClickListener.onClickDownload(bindingAdapterPosition)
                     }
                     btnCancel.id -> {
-                        val pojo = mDatalist[bindingAdapterPosition]
-                        pojo.soFarBytes = 0
-                        onClickListener.onClickCancel(
-                            bindingAdapterPosition,
-                            pojo.id,
-                            pojo.fileName
-                        )
+                        onClickListener.onClickPause(bindingAdapterPosition)
+                        onClickListener.onClickCancel(bindingAdapterPosition)
                     }
-                    llcItemRow.id -> {
-                        val pojo = mDatalist[bindingAdapterPosition]
-                        onClickListener.onClickInfo(
-                            bindingAdapterPosition,
-                            pojo.fileName,
-                            pojo.title,
-                            pojo.url
-                        )
-
+                    ivDelete.id -> {
+                        onClickListener.onClickPause(bindingAdapterPosition)
+                        onClickListener.onClickDelete(bindingAdapterPosition)
                     }
 
-                    else -> {}
+                    else -> {
+
+                    }
                 }
             }
         }
     }
 
-    fun setStatus(position: Int, status: DownloadStatus, payloads: MP4Payloads) {
-        mDatalist[position].status = status
-        notifyItemChanged(position, payloads)
-    }
-
-    fun setStatus(position: Int, soFarBytes: Int, totalBytes: Int, payloads: MP4Payloads) {
-        mDatalist[position].soFarBytes = soFarBytes
-        mDatalist[position].totalBytes = totalBytes
-        notifyItemChanged(position, payloads)
-    }
-
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): MP4VH {
         val binding = ItemRowMp4Binding.inflate(LayoutInflater.from(parent.context), parent, false)
-        return MP4VH(binding, onClickListener, fileNames, mDatalist)
+        return MP4VH(binding, onClickListener)
     }
 
     override fun onBindViewHolder(holder: MP4VH, position: Int) {
@@ -238,9 +163,7 @@ class MP4Adapter(
     }
 
     override fun onBindViewHolder(
-        holder: MP4VH,
-        position: Int,
-        payloads: MutableList<Any>
+        holder: MP4VH, position: Int, payloads: MutableList<Any>
     ) {
         if (payloads.isNotEmpty()) {
             when (payloads[0]) {
@@ -261,15 +184,13 @@ class MP4Adapter(
 
 class ItemMp4Difference : DiffUtil.ItemCallback<Pojo>() {
     override fun areItemsTheSame(
-        oldItem: Pojo,
-        newItem: Pojo
+        oldItem: Pojo, newItem: Pojo
     ): Boolean {
         return oldItem == newItem
     }
 
     override fun areContentsTheSame(
-        oldItem: Pojo,
-        newItem: Pojo
+        oldItem: Pojo, newItem: Pojo
     ): Boolean {
         return oldItem.id == newItem.id
 
@@ -279,10 +200,10 @@ class ItemMp4Difference : DiffUtil.ItemCallback<Pojo>() {
 
 
 interface IOnItemClickListener {
-    fun onClickInfo(position: Int, fileName: String, title: String, url: String)
-    fun onClickDownload(adapterPosition: Int, pojo: Pojo)
-    fun onClickPlay(position: Int, pojo: Pojo)
-    fun onClickPause(id: Int)
-    fun onClickCancel(pos: Int, id: Int, fileName: String)
+    fun onClickDelete(position: Int)
+    fun onClickDownload(position: Int)
+    fun onClickPlay(position: Int)
+    fun onClickPause(position: Int)
+    fun onClickCancel(position: Int)
 }
 

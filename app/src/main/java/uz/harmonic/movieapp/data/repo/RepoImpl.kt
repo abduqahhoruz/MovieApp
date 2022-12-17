@@ -2,6 +2,7 @@ package uz.harmonic.movieapp.data.repo
 
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import timber.log.Timber
 import uz.harmonic.movieapp.data.Pojo
 import uz.harmonic.movieapp.data.db.AppDatabase
 import uz.harmonic.movieapp.data.db.DownloadVideo
@@ -16,13 +17,9 @@ class RepoImpl @Inject constructor(
     override suspend fun add(pojo: Pojo) {
         return dao.add(mapper.mapFromPOJO(pojo))
     }
-
-    override suspend fun updateStatus(status: Int, id: Int): Int {
-        return dao.updateStatus(status, id)
-    }
-
-    override suspend fun updateBytes(id: Int, totalBytes: Int, soFarBytes: Int): Int {
-        return dao.updateBytes(id, soFarBytes, totalBytes)
+    override suspend fun update(pojo: Pojo): Int {
+        Timber.tag("TAGTAG_DB").d("${dao.update(mapper.mapFromPOJO(pojo))}")
+        return dao.update(mapper.mapFromPOJO(pojo))
     }
 
     override suspend fun delete(id: Int): Int {

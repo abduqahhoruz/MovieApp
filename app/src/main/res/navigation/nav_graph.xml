@@ -17,7 +17,7 @@
 
     <fragment
         android:id="@+id/navigation_home_info"
-        android:name="uz.harmonic.movieapp.home.info.InfoFragment"
+        android:name="uz.harmonic.movieapp.player.PlayerFragment"
         android:label="@string/title_Home_info"
-        tools:layout="@layout/fragment_home_info" />
+        tools:layout="@layout/fragment_player" />
 </navigation>

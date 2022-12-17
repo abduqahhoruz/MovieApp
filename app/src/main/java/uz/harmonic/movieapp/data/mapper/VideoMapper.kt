@@ -7,15 +7,19 @@ import javax.inject.Inject
 
 class VideoMapper @Inject constructor() : DbMapper<DownloadVideo, Pojo>() {
     override fun mapFromPOJO(pojo: Pojo): DownloadVideo {
-        return DownloadVideo(
+        val video = DownloadVideo(
             url = pojo.url,
             title = pojo.title,
             fileName = pojo.fileName,
             soFarBytes = pojo.soFarBytes,
             totalBytes = pojo.totalBytes,
             status = getPojoStatus(pojo),
-            paused = pojo.paused
+            taskId = pojo.taskId
         )
+        if (pojo.id!=-1) {
+            video.id = pojo.id
+        }
+        return video
     }
 
     private fun getPojoStatus(pojo: Pojo): Int {
@@ -36,7 +40,7 @@ class VideoMapper @Inject constructor() : DbMapper<DownloadVideo, Pojo>() {
             DownloadStatus.CONNECTED -> {
                 status = DownloadStatus.CONNECTED.value
             }
-            else -> {
+            DownloadStatus.EMPTY -> {
                 status = DownloadStatus.EMPTY.value
             }
         }
@@ -51,7 +55,8 @@ class VideoMapper @Inject constructor() : DbMapper<DownloadVideo, Pojo>() {
             fileName = cache.fileName,
             soFarBytes = cache.soFarBytes,
             totalBytes = cache.totalBytes,
-            status = getCacheStatus(cache)
+            status = getCacheStatus(cache),
+            taskId = cache.taskId
         )
     }
 
@@ -63,9 +68,7 @@ class VideoMapper @Inject constructor() : DbMapper<DownloadVideo, Pojo>() {
                 DownloadStatus.PAUSED.value -> DownloadStatus.PAUSED
                 DownloadStatus.CANCEL.value -> DownloadStatus.CANCEL
                 DownloadStatus.CONNECTED.value -> DownloadStatus.CONNECTED
-                else -> {
-                    DownloadStatus.EMPTY
-                }
+                else -> DownloadStatus.EMPTY
             }
         return status
     }

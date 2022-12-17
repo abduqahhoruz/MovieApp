@@ -4,6 +4,7 @@ import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
+import androidx.room.Update
 import kotlinx.coroutines.flow.Flow
 
 @Dao
@@ -19,7 +20,10 @@ interface Dao {
     fun updateStatus(status: Int, id: Int): Int
 
     @Query("update download_videos set totalBytes =:totalBytes, soFarBytes =:soFarBytes  where id=:id ")
-    fun updateBytes(id: Int, soFarBytes: Int, totalBytes:Int): Int
+    fun updateBytes(id: Int, soFarBytes: Int, totalBytes: Int): Int
+
+    @Update
+    fun update(downloadVideo: DownloadVideo): Int
 
     @Query("delete from download_videos where id=:id")
     fun delete(id: Int): Int

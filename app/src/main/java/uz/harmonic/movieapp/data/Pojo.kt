@@ -8,7 +8,7 @@ data class Pojo(
     var soFarBytes: Int = 0,
     var totalBytes: Int = 0,
     var status: DownloadStatus = DownloadStatus.EMPTY,
-    var paused: Boolean = false
+    var taskId: Int = -1
 
 )
 

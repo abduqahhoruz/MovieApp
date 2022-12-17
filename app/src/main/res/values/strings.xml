@@ -8,7 +8,7 @@
     <string name="title_Home_info">Info</string>
     <string name="error_load_pojo_list">list reading error</string>
     <string name="error_offline">No internet connection</string>
-    <string name="error_server">Server error</string>
+    <string name="error_server">No downloads found</string>
     <string name="retry_btn">Retry</string>
     <string name="notification_sample_desc">This is notification sample demo, in this demo, we show the downloading information in the notification panel and Activity. Every downloading task has a notification item in the notification panel and we will hold them after finishing download. In the meantime, there is a indeterminate progress bar in the activity to indicate the whole process of download.</string>
     <string name="start">Start</string>

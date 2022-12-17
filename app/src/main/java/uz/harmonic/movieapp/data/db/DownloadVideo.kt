@@ -21,8 +21,9 @@ class DownloadVideo(
     var totalBytes: Int = 0,
     @ColumnInfo(name = "status")
     var status: Int = 0,
-    @ColumnInfo(name = "paused")
-    var paused: Boolean = false
+    @ColumnInfo(name = "taskId")
+    var taskId: Int = -1
+
 
 
 )
